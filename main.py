@@ -32,7 +32,11 @@ class MainWindow(QMainWindow):
         super().__init__(*args, **kwargs)  # Run parent constructor
 
         # Initialize serial
-        self.serial = QSerialPort(baudRate=QSerialPort.Baud115200, readyRead=self.on_serial_receive)
+        self.serial = QSerialPort(
+            None,
+            baudRate=QSerialPort.Baud115200,
+            readyRead=self.on_serial_receive
+        )
         self.decoder = PlotDecoder()
 
         # Prepare data structure
@@ -51,7 +55,7 @@ class MainWindow(QMainWindow):
 
         self.build_ui_elements()  # Put actual GUI together
 
-        self.setWindowTitle("uScope")
+        self.setWindowTitle('uScope')
         self.show()
 
         self.set_channels(self.channels)
@@ -71,23 +75,21 @@ class MainWindow(QMainWindow):
         self.input_port = ComboBox()
         self.input_port.popupAboutToBeShown.connect(self.find_devices)
         self.find_devices()  # Call it once already so an initial value is chosen
-        layout_settings.addRow(QLabel("Serial port:"), self.input_port)
-        self.button_port = QPushButton(
-            "Connect",
-            checkable=True,
-            toggled=self.on_connect_toggle
-        )
+        layout_settings.addRow(QLabel('Serial port:'), self.input_port)
+        self.button_port = QPushButton('Connect')
+        self.button_port.setCheckable(True)
+        self.button_port.toggled.connect(self.on_connect_toggle)
 
         # Data size
         self.input_size = QLineEdit()
         self.input_size.setValidator(QIntValidator(5, 1000000))
         self.input_size.setText(str(self.data_size))
-        layout_settings.addRow(QLabel("Samples:"), self.input_size)
+        layout_settings.addRow(QLabel('Samples:'), self.input_size)
 
         # Overlay
         self.input_overlay = QCheckBox()
         self.input_overlay.setChecked(self.overlay)
-        layout_settings.addRow(QLabel("Overlay channels:"), self.input_overlay)
+        layout_settings.addRow(QLabel('Overlay channels:'), self.input_overlay)
 
         # Y-Scale
         layout_scaling = QHBoxLayout()
@@ -95,9 +97,9 @@ class MainWindow(QMainWindow):
         self.input_autoscale.setChecked(self.autoscale)
         self.input_autoscale.toggled.connect(self.on_autoscale_toggle)
         layout_scaling.addWidget(self.input_autoscale)
-        layout_scaling.addWidget(QLabel("Autoscale"))
+        layout_scaling.addWidget(QLabel('Autoscale'))
         layout_scaling.addStretch(0)
-        layout_scaling.addWidget(QLabel("Manual scale:"))
+        layout_scaling.addWidget(QLabel('Manual scale:'))
         self.input_scale = {
             'min': QLineEdit(),
             'max': QLineEdit()
@@ -109,15 +111,15 @@ class MainWindow(QMainWindow):
             input_scale.setDisabled(self.autoscale)
             layout_scaling.addWidget(input_scale)
 
-        layout_settings.addRow(QLabel("Y-scale:"), layout_scaling)
+        layout_settings.addRow(QLabel('Y-scale:'), layout_scaling)
 
         # Update rate
         self.input_render = QLineEdit()
-        self.input_render.setToolTip("Increase this value to slow down the graph rendering. If set to 1, the graph is "
-                                     "updated on each frame.\nWhen set to e.g. 5 the graph will only be re-rendered "
-                                     "every fifth frame. Use this if the application starts to lag.")
+        self.input_render.setToolTip('Increase this value to slow down the graph rendering. If set to 1, the graph is '
+                                     'updated on each frame.\nWhen set to e.g. 5 the graph will only be re-rendered '
+                                     'every fifth frame. Use this if the application starts to lag.')
         self.input_render.setText(str(self.render_frames))
-        layout_settings.addRow(QLabel("Frame updates:"), self.input_render)
+        layout_settings.addRow(QLabel('Frame updates:'), self.input_render)
 
         # Attach top layout
         layout_top.addLayout(layout_settings)
@@ -137,10 +139,10 @@ class MainWindow(QMainWindow):
         # Buttons
         layout_buttons = QHBoxLayout()
         menu_save = QMenu()
-        menu_save.addAction("Numpy")
-        menu_save.addAction("CSV")
+        menu_save.addAction('Numpy')
+        menu_save.addAction('CSV')
         self.button_save = QPushButton(
-            "Save"
+            'Save'
         )
         menu_save.triggered.connect(self.on_save)
         self.button_save.setMenu(menu_save)
@@ -156,7 +158,7 @@ class MainWindow(QMainWindow):
     def on_connect_toggle(self, checked):
         """When the serial `connect` button is pressed"""
 
-        self.button_port.setText("Disconnect" if checked else "Connect")
+        self.button_port.setText('Disconnect' if checked else 'Connect')
 
         self.serial.close()
 
@@ -216,30 +218,30 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, 'Saving data', 'No data recorded yet', QMessageBox.Ok)
             return
 
-        if file_format == "numpy":
-            ext = "Numpy Data (*.npz)"
+        if file_format == 'numpy':
+            ext = 'Numpy Data (*.npz)'
         else:
-            ext = "Comma Separated Values (*.csv)"
+            ext = 'Comma Separated Values (*.csv)'
 
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getSaveFileName(
-            self, "QFileDialog.getSaveFileName()", "", ext, options=options)
+            self, 'QFileDialog.getSaveFileName()', '', ext, options=options)
 
         if filename:
-            if file_format == "numpy":
+            if file_format == 'numpy':
                 np.savez(filename, data=self.data, time=self.time)
             else:
                 data = np.vstack((self.time, self.data))
-                header = "time [s]"
+                header = 'time [s]'
                 for i in range(self.channels):
-                    header += ", Channel {}".format(i)
+                    header += ', Channel {}'.format(i)
 
                 np.savetxt(filename, data.transpose(), delimiter=';', header=header)
 
     def load_settings(self):
         """Load settings from file"""
         try:
-            with open("settings.json", "r") as file:
+            with open('settings.json', 'r') as file:
                 settings = json.load(file)
                 if 'port' in settings and settings['port']:
                     self.input_port.setCurrentIndex(
@@ -273,7 +275,7 @@ class MainWindow(QMainWindow):
             'y_scale_max': self.y_scale[1],
             'render_frames': self.render_frames
         }
-        with open("settings.json", "w") as file:
+        with open('settings.json', 'w') as file:
             file.write(json.dumps(settings))
 
     def closeEvent(self, event):
@@ -292,7 +294,7 @@ class MainWindow(QMainWindow):
 
             label = port.portName()
             if port.description:
-                label += " - " + port.description()
+                label += ' - ' + port.description()
 
             self.input_port.addItem(label, port.portName())
 
@@ -378,7 +380,7 @@ class MainWindow(QMainWindow):
         self.curves = []
 
         if self.overlay:
-            new_plot = self.layout_plots.addPlot(row=0, col=0, title="Channels")
+            new_plot = self.layout_plots.addPlot(row=0, col=0, title='Channels')
 
             for i in range(self.channels):
                 new_curve = new_plot.plot()
@@ -388,7 +390,7 @@ class MainWindow(QMainWindow):
 
         else:
             for i in range(self.channels):
-                new_plot = self.layout_plots.addPlot(row=i, col=0, title="Ch{}".format(i))
+                new_plot = self.layout_plots.addPlot(row=i, col=0, title='Ch{}'.format(i))
                 new_plot.showGrid(False, True)
 
                 new_curve = new_plot.plot()
@@ -413,6 +415,6 @@ if __name__ == '__main__':
 
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    app.setWindowIcon(QIcon('logo.ico'))
+    app.setWindowIcon(QIcon('images/logo.ico'))
     window = MainWindow()
     sys.exit(app.exec())
