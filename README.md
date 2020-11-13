@@ -1,5 +1,7 @@
 # uScope
 
+[![CodeFactor](https://www.codefactor.io/repository/bitbucket/ctw-bw/uscope/badge)](https://www.codefactor.io/repository/bitbucket/ctw-bw/uscope)
+
 This folder contains the source to the uScope ('micro-scope'), a real-time serial data scope for micropython boards.
 
 ## How to use
