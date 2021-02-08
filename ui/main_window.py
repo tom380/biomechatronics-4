@@ -8,6 +8,7 @@ import pyqtgraph as pg
 import numpy as np
 import json
 import os
+import time
 
 from plot_decoder.plot_decoder import PlotDecoder
 from ui.combo_box import ComboBox
@@ -25,6 +26,8 @@ class MainWindow(QMainWindow):
     """Class for running the application window"""
 
     LINECOLORS = ['y', 'm', 'r', 'g', 'c', 'w', 'b']
+
+    FRAME_TIME = 1.0 / 60.0  # Inverse of framerate
 
     def __init__(self, *args, **kwargs):
         """Constructor"""
@@ -51,10 +54,8 @@ class MainWindow(QMainWindow):
         self.overlay = False
         self.autoscale = True  # Automatic y-scaling when true
         self.y_scale = [-10.0, 10.0]  # Y-scale values when not automatic
-        # Render every nth serial frame (increase to ease performance)
-        self.render_frames = 1
 
-        # Keep track of how long ago the graphs were last updated
+        # The system time of the last frame update - Used to limit framerate
         self.last_update = 0
 
         # Create property stubs
@@ -131,15 +132,6 @@ class MainWindow(QMainWindow):
 
         layout_settings.addRow(QLabel('Y-scale:'), layout_scaling)
 
-        # Update rate
-        self.input_render.setToolTip(
-            'Increase this value to slow down the graph rendering. If set to '
-            '1, the graph is updated on each frame.\nWhen set to e.g. 5 the '
-            'graph will only be re-rendered every fifth frame. Use this if '
-            'the application starts to lag.')
-        self.input_render.setText(str(self.render_frames))
-        layout_settings.addRow(QLabel('Frame updates:'), self.input_render)
-
         # Attach top layout
         layout_top.addLayout(layout_settings)
         layout_top.addWidget(self.button_port)
@@ -183,7 +175,6 @@ class MainWindow(QMainWindow):
                 self.input_size.setDisabled(True)
                 self.input_overlay.setDisabled(True)
                 self.input_autoscale.setDisabled(True)
-                self.input_render.setDisabled(True)
                 self.start_recording()
             else:
                 self.button_port.setChecked(False)  # Undo toggle
@@ -196,7 +187,6 @@ class MainWindow(QMainWindow):
             self.input_size.setDisabled(False)
             self.input_overlay.setDisabled(False)
             self.input_autoscale.setDisabled(False)
-            self.input_render.setDisabled(False)
 
     @pyqtSlot(bool)
     def on_autoscale_toggle(self, checked):
@@ -280,8 +270,6 @@ class MainWindow(QMainWindow):
                 if 'y_scale_min' in settings:
                     self.input_scale['min'].\
                         setText(str(settings['y_scale_min']))
-                if 'render_frames' in settings:
-                    self.input_render.setText(str(settings['render_frames']))
         except FileNotFoundError:
             return  # Do nothing
         except json.decoder.JSONDecodeError:
@@ -295,8 +283,7 @@ class MainWindow(QMainWindow):
             'overlay': self.overlay,
             'autoscale': self.autoscale,
             'y_scale_min': self.y_scale[0],
-            'y_scale_max': self.y_scale[1],
-            'render_frames': self.render_frames
+            'y_scale_max': self.y_scale[1]
         }
         with open('settings.json', 'w') as file:
             file.write(json.dumps(settings))
@@ -332,11 +319,10 @@ class MainWindow(QMainWindow):
             float(self.input_scale['min'].text()),
             float(self.input_scale['max'].text())
         ]
-        self.render_frames = int(self.input_render.text())
 
         self.serial.clear()  # Get rid of data in buffer
 
-    def update_data(self, channels, time, new_data):
+    def update_data(self, channels, micros, new_data):
         """Called when new row was received"""
 
         if self.channels != channels:
@@ -349,17 +335,16 @@ class MainWindow(QMainWindow):
         self.time = np.roll(self.time, -1)  # Rotate backwards
 
         if self.time_offset is None:
-            self.time_offset = time
+            self.time_offset = micros
 
-        self.time[0, -1] = (time - self.time_offset) / 1000000
+        self.time[0, -1] = (micros - self.time_offset) / 1000000
 
         self.data_points += 1
 
-        if self.last_update + 1 >= self.render_frames:
+        now = time.time()
+        if now - self.last_update >= self.FRAME_TIME:  # Limit update rate
             self.update_plots()
-            self.last_update = 0
-        else:
-            self.last_update += 1
+            self.last_update = now
 
     def update_plots(self):
         """With data already updated, update plots"""
