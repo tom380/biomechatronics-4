@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QMainWindow, QLabel, QCheckBox, \
     QLineEdit, QPushButton, QMenu, QAction, QMessageBox, QFileDialog, \
     QVBoxLayout, QHBoxLayout, QFormLayout
-from PyQt5.QtGui import QIntValidator, QDoubleValidator, QIcon
+from PyQt5.QtGui import QIntValidator, QDoubleValidator, QIcon, QCloseEvent
 from PyQt5.QtCore import pyqtSlot, QThread
 import hid
 import pyqtgraph as pg
@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
         # Prepare data structure
         self.channels = 0  # Wait for serial data, resize on the fly
         self.data: Optional[np.array] = None  # Received data, each row is a channel
-        self.time = None  # Timestamps of each data column
+        self.time: Optional[np.array] = None  # Timestamps of each data column
         self.data_points = 0  # Number of points recorded
         self.data_size = 200  # Number of points in history
         self.time_offset = None  # Client micros when starting recording
@@ -72,8 +72,8 @@ class MainWindow(QMainWindow):
         self.layout_plots = pg.GraphicsLayoutWidget()
         self.button_save = QPushButton('Save')
 
-        self.plots = []  # Start with empty plots
-        self.curves = []
+        self.plots: List[pg.PlotItem] = []  # Start with empty plots
+        self.curves: List[pg.PlotDataItem] = []
 
         self.build_ui_elements()  # Put actual GUI together
 
@@ -158,7 +158,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_widget)
 
     @pyqtSlot(bool)
-    def on_connect_toggle(self, checked):
+    def on_connect_toggle(self, checked: bool):
         """When the `connect` button is pressed"""
 
         self.button_port.setText('Disconnect' if checked else 'Connect')
@@ -205,7 +205,7 @@ class MainWindow(QMainWindow):
             self.input_autoscale.setDisabled(False)
 
     @pyqtSlot(bool)
-    def on_autoscale_toggle(self, checked):
+    def on_autoscale_toggle(self, checked: bool):
         """Callback for the autoscale checkbox"""
 
         # Enable/disable manual scales
@@ -213,7 +213,7 @@ class MainWindow(QMainWindow):
             input_scale.setDisabled(checked)
 
     @pyqtSlot(QAction)
-    def on_save(self, action):
+    def on_save(self, action: QAction):
         self.save_data(action.text())
 
     @staticmethod
@@ -296,7 +296,7 @@ class MainWindow(QMainWindow):
         with open('settings.json', 'w') as file:
             file.write(json.dumps(settings))
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         """When main window is closed"""
         self.save_settings()
 
@@ -362,7 +362,7 @@ class MainWindow(QMainWindow):
         for i, curve in enumerate(self.curves):
             curve.setData(x=data_x[0, :], y=data_y[i, :])
 
-    def set_channels(self, channels):
+    def set_channels(self, channels: int):
         """
         Resize number of channels
 
