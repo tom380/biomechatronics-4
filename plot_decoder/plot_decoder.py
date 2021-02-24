@@ -10,8 +10,7 @@ class Mode(Enum):
 
 
 class PlotDecoder:
-    """
-    Class to decode the BioRobotics plot protocol
+    """Class to decode the BioRobotics plot protocol.
 
     The serial protocol is as follows:
 
@@ -22,7 +21,7 @@ class PlotDecoder:
     """
 
     def __init__(self, *args, **kwargs):
-        """Constructor"""
+        """Constructor."""
 
         self.header_bytes = [b'\x7f', b'\xff', b'\xbf']
         self.buffer = bytearray()  # Store bytes while receiving
@@ -33,8 +32,8 @@ class PlotDecoder:
         self.time = 0  # Read microtime
         self.data = []  # Received floats
 
-    def set_state(self, new_mode):
-        """Simple wrapper to change mode"""
+    def set_state(self, new_mode: Mode):
+        """Simple wrapper to change mode."""
 
         self.mode = new_mode
         self.bytes_count = 0
@@ -43,9 +42,8 @@ class PlotDecoder:
         if new_mode == Mode.DATA:
             self.data = []
 
-    def receive_byte(self, byte):
-        """
-        Precess new incoming byte
+    def receive_byte(self, byte: bytearray) -> bool:
+        """Precess new incoming byte.
 
         Return true when a complete package was received
         """
