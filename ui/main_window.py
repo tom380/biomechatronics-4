@@ -49,6 +49,7 @@ class MainWindow(QMainWindow):
         self.time: Optional[np.array] = None  # Timestamps of each data column
         self.data_points = 0  # Number of points recorded
         self.data_size = 200  # Number of points in history
+        self.render_size = self.data_size  # Number of points shown in graph
         self.time_offset = None  # Client micros when starting recording
 
         self.overlay = False  # When true, all plots should be combined in one plot
@@ -62,13 +63,14 @@ class MainWindow(QMainWindow):
         self.input_device_name = QLineEdit()
         self.button_port = QPushButton('Connect')
         self.input_size = QLineEdit()
+        self.input_render_size = QLineEdit()
+        self.input_render_all = QCheckBox()
         self.input_overlay = QCheckBox()
         self.input_autoscale = QCheckBox()
         self.input_scale = {
             'min': QLineEdit(),
             'max': QLineEdit()
         }
-        self.input_render = QLineEdit()
         self.layout_plots = pg.GraphicsLayoutWidget()
         self.button_save = QPushButton('Save')
 
@@ -88,8 +90,6 @@ class MainWindow(QMainWindow):
         # Load previous settings
         self.load_settings()
 
-        self.test_counter: Optional[int] = None
-
     def build_ui_elements(self):
         """Create and connect the Qt Widgets to build the full GUI"""
 
@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
         # Port control
         layout_settings = QFormLayout()
         self.input_device_name.setText('mbed')
+        self.input_device_name.setToolTip('Text to search for the HID device')
         layout_settings.addRow(QLabel('Device name:'), self.input_device_name)
         self.button_port.setCheckable(True)
         self.button_port.toggled.connect(self.on_connect_toggle)
@@ -108,7 +109,28 @@ class MainWindow(QMainWindow):
         # Data size
         self.input_size.setValidator(QIntValidator(5, 1000000))
         self.input_size.setText(str(self.data_size))
-        layout_settings.addRow(QLabel('Samples:'), self.input_size)
+        self.input_size.setToolTip('The number of samples that are kept in memory')
+        layout_settings.addRow(QLabel('Keep samples:'), self.input_size)
+
+        # Render size
+        layout_samples = QHBoxLayout()
+        self.input_render_all.setToolTip('Enable to render fewer samples')
+        self.input_render_all.setChecked(True)
+        self.input_render_all.toggled.connect(self.on_render_all_toggle)
+
+        self.input_render_size.setValidator(QIntValidator(5, 1000000))
+        self.input_render_size.setToolTip('The number of samples shown in the graph ('
+                                          'equal to or lower than the number of '
+                                          'samples in memory)')
+        self.input_render_size.setDisabled(self.render_size == self.data_size)
+
+        layout_samples.addWidget(self.input_render_all)
+        layout_samples.addWidget(QLabel('Render all samples'))
+        layout_samples.addStretch(0)
+        layout_samples.addWidget(QLabel('Samples in graph:'))
+        layout_samples.addWidget(self.input_render_size)
+
+        layout_settings.addRow(QLabel('Render samples:'), layout_samples)
 
         # Overlay
         self.input_overlay.setChecked(self.overlay)
@@ -205,6 +227,13 @@ class MainWindow(QMainWindow):
             self.input_autoscale.setDisabled(False)
 
     @pyqtSlot(bool)
+    def on_render_all_toggle(self, checked: bool):
+        """Callback for the render-all checkbox"""
+
+        # Enable/disable render size
+        self.input_render_size.setDisabled(checked)
+
+    @pyqtSlot(bool)
     def on_autoscale_toggle(self, checked: bool):
         """Callback for the autoscale checkbox"""
 
@@ -244,7 +273,7 @@ class MainWindow(QMainWindow):
 
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getSaveFileName(
-            self.dialog, 'QFileDialog.getSaveFileName()', '', ext,
+            self, 'QFileDialog.getSaveFileName()', '', ext,
             options=options)
 
         if filename:
@@ -256,8 +285,8 @@ class MainWindow(QMainWindow):
                 for i in range(self.channels):
                     header += ', Channel {}'.format(i)
 
-                np.savetxt(filename, data.transpose(),
-                           delimiter=';', header=header)
+                np.savetxt(filename, data.transpose(), delimiter=';', header=header,
+                           fmt='%f')
 
     def load_settings(self):
         """Load settings from file"""
@@ -268,16 +297,16 @@ class MainWindow(QMainWindow):
                     self.input_device_name.setText(settings['device'])
                 if 'size' in settings and settings['size'] > 10:
                     self.input_size.setText(str(settings['size']))
+                if 'size_render' in settings:
+                    self.input_render_size.setText(str(settings['size_render']))
                 if 'overlay' in settings:
                     self.input_overlay.setChecked(settings['overlay'])
                 if 'autoscale' in settings:
                     self.input_autoscale.setChecked(settings['autoscale'])
                 if 'y_scale_max' in settings:
-                    self.input_scale['max'].\
-                        setText(str(settings['y_scale_max']))
+                    self.input_scale['max'].setText(str(settings['y_scale_max']))
                 if 'y_scale_min' in settings:
-                    self.input_scale['min'].\
-                        setText(str(settings['y_scale_min']))
+                    self.input_scale['min'].setText(str(settings['y_scale_min']))
         except FileNotFoundError:
             return  # Do nothing
         except json.decoder.JSONDecodeError:
@@ -288,6 +317,7 @@ class MainWindow(QMainWindow):
         settings = {
             'device': self.input_device_name.text(),
             'size': self.data_size,
+            'size_render': self.render_size,
             'overlay': self.overlay,
             'autoscale': self.autoscale,
             'y_scale_min': self.y_scale[0],
@@ -312,6 +342,7 @@ class MainWindow(QMainWindow):
         self.channels = 0  # Force an update on the next data point
         self.data_points = 0
         self.data_size = int(self.input_size.text())
+        self.render_size = int(self.input_render_size.text())
         self.overlay = self.input_overlay.isChecked()
         self.autoscale = self.input_autoscale.isChecked()
         self.y_scale = [
@@ -319,13 +350,14 @@ class MainWindow(QMainWindow):
             float(self.input_scale['max'].text())
         ]
 
+        if self.input_render_all.isChecked():
+            self.render_size = self.data_size
+        if self.render_size is None or self.render_size > self.data_size:
+            self.render_size = self.data_size
+
     @pyqtSlot(int, list)
     def update_data(self, micros: int, new_data: list):
         """Called when new row was received"""
-
-        if self.test_counter is not None and self.test_counter + 1 != new_data[0]:
-            print('Missed', new_data[0] - self.test_counter - 1, 'frames')
-        self.test_counter = new_data[0]
 
         channels = len(new_data)
 
@@ -352,9 +384,12 @@ class MainWindow(QMainWindow):
     def update_plots(self):
         """With data already updated, update plots"""
 
-        if self.data_points < self.data_size:
+        if self.data_points < self.render_size:
             data_x = self.time[:, -self.data_points:]
             data_y = self.data[:, -self.data_points:]
+        elif self.render_size < self.data_size:
+            data_x = self.time[:, -self.render_size:]
+            data_y = self.data[:, -self.render_size:]
         else:
             data_x = self.time
             data_y = self.data
