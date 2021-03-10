@@ -2,17 +2,16 @@ from PyQt5.QtWidgets import QWidget, QMainWindow, QLabel, QCheckBox, \
     QLineEdit, QPushButton, QMenu, QAction, QMessageBox, QFileDialog, \
     QVBoxLayout, QHBoxLayout, QFormLayout
 from PyQt5.QtGui import QIntValidator, QDoubleValidator, QIcon, QCloseEvent
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
+from PyQt5.QtCore import pyqtSlot, QThread
+import hid
 import pyqtgraph as pg
 import numpy as np
 import json
 import os
 import time
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
-from plot_decoder.plot_decoder import PlotDecoder
-from ui.combo_box import ComboBox
+from hid_worker.hid_worker import HIDWorker
 
 try:
     import ctypes
@@ -35,14 +34,14 @@ class MainWindow(QMainWindow):
 
         super().__init__(*args, **kwargs)  # Run parent constructor
 
-        # Initialize serial
-        self.serial = QSerialPort(
-            None,
-            baudRate=QSerialPort.Baud115200,
-            readyRead=self.on_serial_receive
-        )
+        # Initialize HID USB device (not connected yet)
+        self.hid = hid.device()
 
-        self.decoder = PlotDecoder()
+        self.thread = QThread()
+        self.worker = HIDWorker(self.hid)
+        self.worker.moveToThread(self.thread)
+        self.worker.update.connect(self.update_data)  # Link HID reports to local list
+        self.thread.started.connect(self.worker.run)  # Start worker with thread
 
         # Prepare data structure
         self.channels = 0  # Wait for serial data, resize on the fly
@@ -50,9 +49,10 @@ class MainWindow(QMainWindow):
         self.time: Optional[np.array] = None  # Timestamps of each data column
         self.data_points = 0  # Number of points recorded
         self.data_size = 200  # Number of points in history
-        self.time_offset = None  # Time offset in microseconds
-        # When true, all plots should be combined in one plot
-        self.overlay = False
+        self.render_size = self.data_size  # Number of points shown in graph
+        self.time_offset = None  # Client micros when starting recording
+
+        self.overlay = False  # When true, all plots should be combined in one plot
         self.autoscale = True  # Automatic y-scaling when true
         self.y_scale = [-10.0, 10.0]  # Y-scale values when not automatic
 
@@ -60,16 +60,17 @@ class MainWindow(QMainWindow):
         self.last_update = 0.0
 
         # Create property stubs
-        self.input_port = ComboBox()
+        self.input_device_name = QLineEdit()
         self.button_port = QPushButton('Connect')
         self.input_size = QLineEdit()
+        self.input_render_size = QLineEdit()
+        self.input_render_all = QCheckBox()
         self.input_overlay = QCheckBox()
         self.input_autoscale = QCheckBox()
         self.input_scale = {
             'min': QLineEdit(),
             'max': QLineEdit()
         }
-        self.input_render = QLineEdit()
         self.layout_plots = pg.GraphicsLayoutWidget()
         self.button_save = QPushButton('Save')
 
@@ -99,17 +100,37 @@ class MainWindow(QMainWindow):
 
         # Port control
         layout_settings = QFormLayout()
-        self.input_port.popupAboutToBeShown.connect(self.find_devices)
-        # Call it once already so an initial value is chosen
-        self.find_devices()
-        layout_settings.addRow(QLabel('Serial port:'), self.input_port)
+        self.input_device_name.setText('mbed')
+        self.input_device_name.setToolTip('Text to search for the HID device')
+        layout_settings.addRow(QLabel('Device name:'), self.input_device_name)
         self.button_port.setCheckable(True)
         self.button_port.toggled.connect(self.on_connect_toggle)
 
         # Data size
         self.input_size.setValidator(QIntValidator(5, 1000000))
         self.input_size.setText(str(self.data_size))
-        layout_settings.addRow(QLabel('Samples:'), self.input_size)
+        self.input_size.setToolTip('The number of samples that are kept in memory')
+        layout_settings.addRow(QLabel('Keep samples:'), self.input_size)
+
+        # Render size
+        layout_samples = QHBoxLayout()
+        self.input_render_all.setToolTip('Enable to render fewer samples')
+        self.input_render_all.setChecked(True)
+        self.input_render_all.toggled.connect(self.on_render_all_toggle)
+
+        self.input_render_size.setValidator(QIntValidator(5, 1000000))
+        self.input_render_size.setToolTip('The number of samples shown in the graph ('
+                                          'equal to or lower than the number of '
+                                          'samples in memory)')
+        self.input_render_size.setDisabled(self.render_size == self.data_size)
+
+        layout_samples.addWidget(self.input_render_all)
+        layout_samples.addWidget(QLabel('Render all samples'))
+        layout_samples.addStretch(0)
+        layout_samples.addWidget(QLabel('Samples in graph:'))
+        layout_samples.addWidget(self.input_render_size)
+
+        layout_settings.addRow(QLabel('Render samples:'), layout_samples)
 
         # Overlay
         self.input_overlay.setChecked(self.overlay)
@@ -160,34 +181,57 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(bool)
     def on_connect_toggle(self, checked: bool):
-        """When the serial `connect` button is pressed"""
+        """When the `connect` button is pressed"""
 
         self.button_port.setText('Disconnect' if checked else 'Connect')
 
-        self.serial.close()
+        self.worker.stop()
+        self.thread.quit()
+        self.thread.wait()
+        self.hid.close()
 
         if checked:
-            port = self.input_port.currentData()
-            self.serial.setPortName(port)
+            name = self.input_device_name.text()
+            device_tuple = self.get_hid_device(name)
 
-            # If serial opened successfully
-            if self.serial.open(QSerialPort.ReadOnly):
-                self.input_port.setDisabled(True)
-                self.input_size.setDisabled(True)
-                self.input_overlay.setDisabled(True)
-                self.input_autoscale.setDisabled(True)
-                self.start_recording()
-            else:
-                self.button_port.setChecked(False)  # Undo toggle
+            if device_tuple is None:
                 message = QMessageBox()
-                QMessageBox.warning(message, 'Serial connection',
-                                    'Could not connect to device',
-                                    QMessageBox.Ok)
+                QMessageBox.warning(message, 'Device not found',
+                                    'No HID device with such a name could be found. '
+                                    'Is the device connected?', QMessageBox.Ok)
+                self.button_port.setChecked(False)  # Undo toggle
+                return
+
+            try:
+                self.hid.open(*device_tuple)
+                self.hid.set_nonblocking(True)
+            except IOError as err:
+                message = QMessageBox()
+                QMessageBox.warning(message, 'Failed to connect',
+                                    'The HID device could not be opened.<br>'
+                                    + str(err), QMessageBox.Ok)
+
+                self.button_port.setChecked(False)  # Undo toggle
+                return
+
+            self.input_device_name.setDisabled(True)
+            self.input_size.setDisabled(True)
+            self.input_overlay.setDisabled(True)
+            self.input_autoscale.setDisabled(True)
+            self.start_recording()
+            self.thread.start()  # Start
         else:
-            self.input_port.setDisabled(False)
+            self.input_device_name.setDisabled(False)
             self.input_size.setDisabled(False)
             self.input_overlay.setDisabled(False)
             self.input_autoscale.setDisabled(False)
+
+    @pyqtSlot(bool)
+    def on_render_all_toggle(self, checked: bool):
+        """Callback for the render-all checkbox"""
+
+        # Enable/disable render size
+        self.input_render_size.setDisabled(checked)
 
     @pyqtSlot(bool)
     def on_autoscale_toggle(self, checked: bool):
@@ -197,27 +241,21 @@ class MainWindow(QMainWindow):
         for key, input_scale in self.input_scale.items():
             input_scale.setDisabled(checked)
 
-    @pyqtSlot()
-    def on_serial_receive(self):
-        """"
-        Callback for serial data, already triggered by data
-
-        It's important all available bytes are consumed, because this call-back
-        cannot keep up with incoming streams at real-time!
-        """
-
-        new_bytes = self.serial.readAll()
-
-        for byte in new_bytes:
-            if self.decoder.receive_byte(byte):
-                self.update_data(self.decoder.channel_size, self.decoder.time,
-                                 self.decoder.data)
-
     @pyqtSlot(QAction)
     def on_save(self, action: QAction):
         self.save_data(action.text())
 
-    def save_data(self, file_format: str):
+    @staticmethod
+    def get_hid_device(name: str) -> Optional[Tuple[int, int]]:
+        """Get the first HID device that matches the provided name."""
+
+        for device_dict in hid.enumerate():
+            if name in device_dict['manufacturer_string']:
+                return device_dict['vendor_id'], device_dict['product_id']
+
+        return None
+
+    def save_data(self, file_format):
         """Save data, file_format is either `csv` or `numpy`"""
 
         file_format = file_format.lower()
@@ -235,7 +273,7 @@ class MainWindow(QMainWindow):
 
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getSaveFileName(
-            self.dialog, 'QFileDialog.getSaveFileName()', '', ext,
+            self, 'QFileDialog.getSaveFileName()', '', ext,
             options=options)
 
         if filename:
@@ -247,30 +285,28 @@ class MainWindow(QMainWindow):
                 for i in range(self.channels):
                     header += ', Channel {}'.format(i)
 
-                np.savetxt(filename, data.transpose(),
-                           delimiter=';', header=header)
+                np.savetxt(filename, data.transpose(), delimiter=';', header=header,
+                           fmt='%f')
 
     def load_settings(self):
         """Load settings from file"""
         try:
             with open('settings.json', 'r') as file:
                 settings = json.load(file)
-                if 'port' in settings and settings['port']:
-                    self.input_port.setCurrentIndex(
-                        self.input_port.findData(settings['port'])
-                    )
+                if 'device' in settings and settings['device']:
+                    self.input_device_name.setText(settings['device'])
                 if 'size' in settings and settings['size'] > 10:
                     self.input_size.setText(str(settings['size']))
+                if 'size_render' in settings:
+                    self.input_render_size.setText(str(settings['size_render']))
                 if 'overlay' in settings:
                     self.input_overlay.setChecked(settings['overlay'])
                 if 'autoscale' in settings:
                     self.input_autoscale.setChecked(settings['autoscale'])
                 if 'y_scale_max' in settings:
-                    self.input_scale['max'].\
-                        setText(str(settings['y_scale_max']))
+                    self.input_scale['max'].setText(str(settings['y_scale_max']))
                 if 'y_scale_min' in settings:
-                    self.input_scale['min'].\
-                        setText(str(settings['y_scale_min']))
+                    self.input_scale['min'].setText(str(settings['y_scale_min']))
         except FileNotFoundError:
             return  # Do nothing
         except json.decoder.JSONDecodeError:
@@ -279,8 +315,9 @@ class MainWindow(QMainWindow):
     def save_settings(self):
         """Save current settings to file"""
         settings = {
-            'port': self.serial.portName(),
+            'device': self.input_device_name.text(),
             'size': self.data_size,
+            'size_render': self.render_size,
             'overlay': self.overlay,
             'autoscale': self.autoscale,
             'y_scale_min': self.y_scale[0],
@@ -291,29 +328,21 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent):
         """When main window is closed"""
-        self.serial.close()
         self.save_settings()
+
+        self.hid.close()
+        self.worker.stop()
+        self.thread.quit()
+        self.thread.wait()
+
         super().closeEvent(event)  # Call original method too
-
-    def find_devices(self):
-        """Set found serial devices into dropdown"""
-        ports = QSerialPortInfo.availablePorts()
-
-        self.input_port.clear()
-
-        for port in ports:
-
-            label = port.portName()
-            if port.description:
-                label += ' - ' + port.description()
-
-            self.input_port.addItem(label, port.portName())
 
     def start_recording(self):
         """Called when recording should start (e.g. when `Connect` was hit)"""
         self.channels = 0  # Force an update on the next data point
         self.data_points = 0
         self.data_size = int(self.input_size.text())
+        self.render_size = int(self.input_render_size.text())
         self.overlay = self.input_overlay.isChecked()
         self.autoscale = self.input_autoscale.isChecked()
         self.y_scale = [
@@ -321,24 +350,29 @@ class MainWindow(QMainWindow):
             float(self.input_scale['max'].text())
         ]
 
-        self.serial.clear()  # Get rid of data in buffer
+        if self.input_render_all.isChecked():
+            self.render_size = self.data_size
+        if self.render_size is None or self.render_size > self.data_size:
+            self.render_size = self.data_size
 
-    def update_data(self, channels: int, micros: int, new_data: list):
+    @pyqtSlot(int, list)
+    def update_data(self, micros: int, new_data: list):
         """Called when new row was received"""
+
+        channels = len(new_data)
 
         if self.channels != channels:
             self.set_channels(channels)
 
         col = np.array(new_data, dtype=float)
         self.data = np.roll(self.data, -1, axis=1)  # Rotate backwards
-        self.data[:, -1] = col[:, 0]  # Set new column at the end
-
-        self.time = np.roll(self.time, -1)  # Rotate backwards
+        self.data[:, -1] = col  # Set new column at the end
 
         if self.time_offset is None:
             self.time_offset = micros
 
-        self.time[0, -1] = (micros - self.time_offset) / 1000000
+        self.time = np.roll(self.time, -1)  # Rotate backwards
+        self.time[0, -1] = 1.0e-6 * (micros - self.time_offset)  # Save as seconds
 
         self.data_points += 1
 
@@ -350,9 +384,12 @@ class MainWindow(QMainWindow):
     def update_plots(self):
         """With data already updated, update plots"""
 
-        if self.data_points < self.data_size:
+        if self.data_points < self.render_size:
             data_x = self.time[:, -self.data_points:]
             data_y = self.data[:, -self.data_points:]
+        elif self.render_size < self.data_size:
+            data_x = self.time[:, -self.render_size:]
+            data_y = self.data[:, -self.render_size:]
         else:
             data_x = self.time
             data_y = self.data
@@ -371,8 +408,9 @@ class MainWindow(QMainWindow):
         self.channels = channels
         self.data = np.zeros((channels, self.data_size))
         self.time = np.zeros((1, self.data_size))
-        self.time_offset = None
         self.data_points = 0
+
+        self.time_offset = None  # Mark offset to be reset on first read
 
         self.last_update = 0
 
