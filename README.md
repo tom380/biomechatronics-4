@@ -1,8 +1,10 @@
-# uScope
+# Biomechatronics Scope
 
 [![CodeFactor](https://www.codefactor.io/repository/bitbucket/ctw-bw/uscope/badge)](https://www.codefactor.io/repository/bitbucket/ctw-bw/uscope)
 
-This folder contains the source to the uScope ('micro-scope'), a real-time serial data scope for micropython boards.
+This is a fork from [**uScope**](../../../uscope).
+
+The Biomechatronics Scope is used to visualize EMG signals and a neural-muscular model. 
 
 ## How to use
 
