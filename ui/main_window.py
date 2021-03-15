@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QMainWindow, QLabel, QCheckBox, \
     QLineEdit, QPushButton, QMenu, QAction, QMessageBox, QFileDialog, \
-    QVBoxLayout, QHBoxLayout, QFormLayout
+    QVBoxLayout, QHBoxLayout, QFormLayout, QFrame
 from PyQt5.QtGui import QIntValidator, QDoubleValidator, QIcon, QCloseEvent
 from PyQt5.QtCore import pyqtSlot, QThread
 import hid
@@ -12,6 +12,8 @@ import time
 from typing import Optional, List, Tuple
 
 from hid_worker.hid_worker import HIDWorker
+from simulator.simulator import Simulator
+from simulator.model import Model
 
 try:
     import ctypes
@@ -22,15 +24,20 @@ except ImportError:
     ctypes = None  # Very unimportant fix, continue if ctypes was not found
 
 
-class MainWindow(QMainWindow):
-    """Class for running the application window"""
+# class MainWindow(QMainWindow):
+class MainWindow(QWidget):
+    """Class for running the application window."""
 
     LINECOLORS = ['y', 'm', 'r', 'g', 'c', 'w', 'b']
 
     FRAME_TIME = 1.0 / 60.0  # Inverse of framerate
 
     def __init__(self, *args, **kwargs):
-        """Constructor"""
+        """
+
+        All class properties are created inside the constructor.
+        As much as possible is moved to the separate init method.
+        """
 
         super().__init__(*args, **kwargs)  # Run parent constructor
 
@@ -58,6 +65,10 @@ class MainWindow(QMainWindow):
 
         # The system time of the last frame update - Used to limit framerate
         self.last_update = 0.0
+
+        # Make simulator
+        self.simulator = Simulator()
+        self.model = Model()
 
         # Create property stubs
         self.input_device_name = QLineEdit()
@@ -93,10 +104,18 @@ class MainWindow(QMainWindow):
     def build_ui_elements(self):
         """Create and connect the Qt Widgets to build the full GUI"""
 
-        main_widget = QWidget()
-        layout_main = QVBoxLayout(main_widget)  # Main vertical layout
-        layout_top = QHBoxLayout()  # Layout for top buttons
-        layout_bottom = QVBoxLayout()  # Layout for channels
+        layout_main = QHBoxLayout(self)  # Main horizontal layout
+
+        layout_right = QVBoxLayout()
+        layout_left = QVBoxLayout()
+        layout_right_buttons = QHBoxLayout()  # Layout for top buttons
+        layout_right_plots = QVBoxLayout()  # Layout for channels
+
+        layout_main.addLayout(layout_left)
+        layout_main.addLayout(layout_right)
+
+        # Frame
+        layout_right.addWidget(self.simulator)
 
         # Port control
         layout_settings = QFormLayout()
@@ -155,15 +174,15 @@ class MainWindow(QMainWindow):
         layout_settings.addRow(QLabel('Y-scale:'), layout_scaling)
 
         # Attach top layout
-        layout_top.addLayout(layout_settings)
-        layout_top.addWidget(self.button_port)
+        layout_right_buttons.addLayout(layout_settings)
+        layout_right_buttons.addWidget(self.button_port)
 
-        layout_main.addLayout(layout_top)
+        layout_left.addLayout(layout_right_buttons)
 
         # Plots
-        layout_bottom.addWidget(self.layout_plots)
+        layout_right_plots.addWidget(self.layout_plots)
 
-        layout_main.addLayout(layout_bottom)
+        layout_left.addLayout(layout_right_plots)
 
         # Buttons
         layout_buttons = QHBoxLayout()
@@ -174,10 +193,7 @@ class MainWindow(QMainWindow):
         menu_save.triggered.connect(self.on_save)
         self.button_save.setMenu(menu_save)
         layout_buttons.addWidget(self.button_save)
-        layout_main.addLayout(layout_buttons)
-
-        # Main window widget
-        self.setCentralWidget(main_widget)
+        layout_left.addLayout(layout_buttons)
 
     @pyqtSlot(bool)
     def on_connect_toggle(self, checked: bool):
@@ -360,6 +376,10 @@ class MainWindow(QMainWindow):
         """Called when new row was received"""
 
         channels = len(new_data)
+
+        # Perform model update
+        if channels == 2:
+            self.simulator.angle = self.model.update(new_data[0], new_data[1])
 
         if self.channels != channels:
             self.set_channels(channels)
