@@ -7,16 +7,16 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="300"
-   height="123"
-   viewBox="0 0 79.374999 32.543749"
+   width="123"
+   height="300"
+   viewBox="0 0 32.54375 79.374998"
    version="1.1"
    id="svg8"
    inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)"
    sodipodi:docname="hand_wrist.svg"
    inkscape:export-filename="C:\Users\RoosRA\Source\Biomechantronics\biomechatronics-scope\images\hand_wrist.png"
-   inkscape:export-xdpi="180"
-   inkscape:export-ydpi="180">
+   inkscape:export-xdpi="60.097561"
+   inkscape:export-ydpi="60.097561">
   <defs
      id="defs2" />
   <sodipodi:namedview
@@ -26,9 +26,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="5.6"
-     inkscape:cx="162.53369"
-     inkscape:cy="72.034582"
+     inkscape:zoom="2.8"
+     inkscape:cx="152.50543"
+     inkscape:cy="166.76899"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      inkscape:document-rotation="0"
@@ -54,7 +54,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -68,9 +68,9 @@
        id="rect21"
        width="99.222954"
        height="31.659269"
-       x="-8.3023348"
-       y="159.07365"
-       transform="rotate(-0.08329951)"
+       x="-258.33932"
+       y="12.775565"
+       transform="rotate(-90.0833)"
        ry="8.9817142"
        rx="18.84626" />
   </g>

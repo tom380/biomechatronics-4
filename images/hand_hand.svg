@@ -7,16 +7,16 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="618"
-   height="154"
-   viewBox="0 0 163.51249 40.745833"
+   width="160"
+   height="620"
+   viewBox="0 0 42.333331 164.04167"
    version="1.1"
    id="svg8"
    inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)"
    sodipodi:docname="hand_hand.svg"
    inkscape:export-filename="C:\Users\RoosRA\Source\Biomechantronics\biomechatronics-scope\images\hand_hand.png"
-   inkscape:export-xdpi="180"
-   inkscape:export-ydpi="180">
+   inkscape:export-xdpi="60"
+   inkscape:export-ydpi="60">
   <defs
      id="defs2" />
   <sodipodi:namedview
@@ -26,9 +26,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.979899"
-     inkscape:cx="284.28978"
-     inkscape:cy="36.827997"
+     inkscape:zoom="1.4"
+     inkscape:cx="326.77292"
+     inkscape:cy="291.59124"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      inkscape:document-rotation="0"
@@ -54,7 +54,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -62,12 +62,12 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-42.634207,-160.43807)">
+     transform="translate(-28.210709,-27.26985)">
     <g
        id="g873"
-       inkscape:transform-center-x="-73.842661"
-       inkscape:transform-center-y="-1.9940664"
-       transform="rotate(6.8607421,-403.8287,-100.38424)">
+       inkscape:transform-center-x="-1.9940662"
+       inkscape:transform-center-y="-73.842658"
+       transform="matrix(-0.11945659,-0.99283942,-0.99283942,0.11945659,182.66717,248.56434)">
       <path
          style="fill:#00c1ff;fill-opacity:1;stroke:#1b1b1b;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
          d="m 160.63988,108.95163 26.74181,-4.6302 c 0,0 -0.3116,-1.95015 -0.85044,-2.74033 -0.56814,-0.83315 -1.42304,-1.52296 -2.36235,-1.889882 -1.67644,-0.654864 -3.58863,-0.468212 -5.38617,-0.377976 -2.96861,0.149023 -5.85302,1.041678 -8.78794,1.511908 -4.02459,0.64481 -8.03038,1.49534 -12.09524,1.79538 -0.91097,0.0672 -2.74033,0 -2.74033,0 z"

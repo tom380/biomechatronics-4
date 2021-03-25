@@ -19,4 +19,4 @@ class MuscleModel:
         :return: Torque [Nm]
         """
         # Simply take EMG as proportional to torque
-        return (emg1 - emg2) * 10.0
+        return (emg1 - emg2) * 2.0

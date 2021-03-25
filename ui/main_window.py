@@ -9,6 +9,7 @@ import numpy as np
 import json
 import os
 import time
+import random
 from typing import Optional, List, Tuple
 
 from hid_worker.hid_worker import HIDWorker
@@ -382,9 +383,7 @@ class MainWindow(QWidget):
 
         # Perform muscle_model update
         if channels == 2:
-            torque = self.muscle_model.update(new_data[0], new_data[1])
-            angle = self.dynamics_model.update(torque)
-            self.simulator.angle = angle
+            self.update_models(new_data)
 
         if self.channels != channels:
             self.set_channels(channels)
@@ -405,6 +404,29 @@ class MainWindow(QWidget):
         if now - self.last_update >= self.FRAME_TIME:  # Limit update rate
             self.update_plots()
             self.last_update = now
+
+    def update_models(self, new_data: list):
+        """Update models, called on new data frame"""
+
+        torque = self.muscle_model.update(new_data[0], new_data[1])
+        angle = self.dynamics_model.update(torque)
+
+        self.simulator.angle = angle
+
+        target = self.simulator.target
+
+        # Update target
+        if abs(target - angle) < 5 and abs(self.dynamics_model.velocity) < 10:
+
+            step = 30
+            if target <= -60:
+                self.simulator.target += step
+            elif target >= 60:
+                self.simulator.target -= step
+            elif random.random() > 0.5:
+                self.simulator.target += step
+            else:
+                self.simulator.target -= step
 
     def update_plots(self):
         """With data already updated, update plots"""
