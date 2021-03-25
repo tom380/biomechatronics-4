@@ -13,7 +13,8 @@ from typing import Optional, List, Tuple
 
 from hid_worker.hid_worker import HIDWorker
 from simulator.simulator import Simulator
-from simulator.model import Model
+from simulator.muscle_model import MuscleModel
+from simulator.dynamics_model import DynamicsModel
 
 try:
     import ctypes
@@ -68,7 +69,9 @@ class MainWindow(QWidget):
 
         # Make simulator
         self.simulator = Simulator()
-        self.model = Model()
+        self.muscle_model = MuscleModel()
+        dt = 1.0 / self.muscle_model.FS
+        self.dynamics_model = DynamicsModel(dt)
 
         # Create property stubs
         self.input_device_name = QLineEdit()
@@ -377,9 +380,11 @@ class MainWindow(QWidget):
 
         channels = len(new_data)
 
-        # Perform model update
+        # Perform muscle_model update
         if channels == 2:
-            self.simulator.angle = self.model.update(new_data[0], new_data[1])
+            torque = self.muscle_model.update(new_data[0], new_data[1])
+            angle = self.dynamics_model.update(torque)
+            self.simulator.angle = angle
 
         if self.channels != channels:
             self.set_channels(channels)
