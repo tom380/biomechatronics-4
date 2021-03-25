@@ -382,8 +382,22 @@ class MainWindow(QWidget):
         channels = len(new_data)
 
         # Perform muscle_model update
-        if channels == 2:
-            self.update_models(new_data)
+        if channels != 2:
+            # Disconnect
+            self.on_connect_toggle(False)
+            message = QMessageBox()
+            QMessageBox.warning(message, 'Incorrect number of channels',
+                                'The application expects exactly two channels, '
+                                'but registered {}. Is the correct program running on '
+                                'the board?'.format(channels),
+                                QMessageBox.Ok)
+
+        channels = 4  # Artificially add the angle and target channels
+
+        self.update_models(new_data)  # Propagate model stuff
+
+        new_data.append(self.dynamics_model.angle)
+        new_data.append(self.simulator.target)
 
         if self.channels != channels:
             self.set_channels(channels)
@@ -445,8 +459,7 @@ class MainWindow(QWidget):
             curve.setData(x=data_x[0, :], y=data_y[i, :])
 
     def set_channels(self, channels: int):
-        """
-        Resize number of channels
+        """Resize number of channels
 
         Also functions as a reset between recordings, also sets new plot
         windows and curves
@@ -464,7 +477,11 @@ class MainWindow(QWidget):
         self.create_plots()
 
     def create_plots(self):
-        """Create the desired plots and curves"""
+        """Create the desired plots and curves
+
+        This has been modified to plot the first two channels normally, but then add
+        an overlay plot of the angle and target angle as channels three and four.
+        """
 
         # Clear old
         for plot in self.plots:
@@ -474,31 +491,44 @@ class MainWindow(QWidget):
         self.plots = []
         self.curves = []
 
+        # First add the two EMG channels
         if self.overlay:
             new_plot = self.layout_plots.addPlot(row=0, col=0,
                                                  title='Channels')
 
-            for i in range(self.channels):
+            for i in range(2):  # Only the EMG channels
                 new_curve = new_plot.plot()
                 self.curves.append(new_curve)
 
             self.plots.append(new_plot)
 
         else:
-            for i in range(self.channels):
+            for i in range(2):
                 new_plot = self.layout_plots.addPlot(row=i, col=0,
-                                                     title='Ch{}'.format(i))
-                new_plot.showGrid(False, True)
+                                                     title='EMG{}'.format(i + 1))
 
                 new_curve = new_plot.plot()
 
                 self.plots.append(new_plot)
                 self.curves.append(new_curve)
 
+        # Now add the model angle plot (overlay)
+        plot_angles = self.layout_plots.addPlot(row=3, col=0, title='Model')
+        plot_angles.addLegend(offset=0, colCount=2)
+
+        curve_angle = plot_angles.plot(name='Angle')
+        curve_target = plot_angles.plot(name='Target')
+
+        self.plots.append(plot_angles)
+        self.curves.append(curve_angle)
+        self.curves.append(curve_target)
+
+        # Continue normally...
+
         # Set style
-        for plot in self.plots:
+        for i, plot in enumerate(self.plots):
             plot.showGrid(False, True)
-            if not self.autoscale:
+            if not self.autoscale and i < 2:
                 # Autoscaling is by default
                 plot.setYRange(self.y_scale[0], self.y_scale[1])
 
@@ -507,3 +537,5 @@ class MainWindow(QWidget):
             c = self.LINECOLORS[i % len(self.LINECOLORS)]
             pen = pg.mkPen(c, width=2)
             curve.setPen(pen)
+
+        plot_angles.setYRange(-90.0, 75.0)

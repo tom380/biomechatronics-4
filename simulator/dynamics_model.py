@@ -41,9 +41,9 @@ class DynamicsModel:
         # Compute static friction:
 
         friction = 0
-        if self._velocity > 0.0:
+        if self._velocity > 0.1:
             friction = self.static_friction
-        elif self._velocity < 0.0:
+        elif self._velocity < -0.1:
             friction = -self.static_friction
 
         acceleration = (torque - friction -
