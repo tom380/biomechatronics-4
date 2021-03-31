@@ -14,8 +14,13 @@ from typing import Optional, List, Tuple
 
 from hid_worker.hid_worker import HIDWorker
 from simulator.simulator import Simulator
-from simulator.muscle_model import MuscleModel
 from simulator.dynamics_model import DynamicsModel
+
+# Try to load user model, fallback on base model
+try:
+    from model.muscle_model import MuscleModel
+except ImportError:
+    from simulator.muscle_model_base import MuscleModelBase as MuscleModel
 
 try:
     import ctypes

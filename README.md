@@ -4,7 +4,12 @@
 
 This is a fork from [**uScope**](../../../uscope).
 
-The Biomechatronics Scope is used to visualize EMG signals and a neural-muscular model. 
+The Biomechatronics Scope is used to visualize EMG signals and a neural-muscular model.
+
+## User Code
+
+Use the `model/` directory for the user code of students.  
+See [model/README.md](model/README.md). 
 
 ## How to use
 

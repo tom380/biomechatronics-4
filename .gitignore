@@ -1,9 +1,13 @@
+# User specfic
+##############
+/settings.json
+/model/muscle_model.py
+
 # Build directories
 ######################
 build/
 build-*/
 /dist/
-/settings.json
 
 # Test failure outputs
 ######################

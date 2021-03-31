@@ -1,4 +1,4 @@
-class MuscleModel:
+class MuscleModelBase:
     """Base class for the EMG-steered neural-muscular muscle_model.
 
     The muscle_model will take in unfiltered EMG and will output a torque that is applied to
@@ -18,5 +18,6 @@ class MuscleModel:
         :param emg2: Unfiltered EMG (channel 1)
         :return: Torque [Nm]
         """
-        # Simply take EMG as proportional to torque
-        return (emg1 - emg2) * 2.0
+
+        # Extend this class and override this method to add your own model
+        return 0.0
