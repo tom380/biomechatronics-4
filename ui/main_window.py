@@ -21,6 +21,10 @@ try:
     from model.muscle_model import MuscleModel
 except ImportError:
     from simulator.muscle_model_base import MuscleModelBase as MuscleModel
+try:
+    from model.muscle_model import EmgFilter
+except ImportError:
+    from simulator.muscle_model_base import EmgFilterBase as EmgFilter
 
 try:
     import ctypes
@@ -75,6 +79,7 @@ class MainWindow(QWidget):
 
         # Make simulator
         self.simulator = Simulator()
+        self.filter_model = EmgFilter()
         self.muscle_model = MuscleModel()
         dt = 1.0 / self.muscle_model.FS
         self.dynamics_model = DynamicsModel(dt)
@@ -399,10 +404,12 @@ class MainWindow(QWidget):
 
         channels = 4  # Artificially add the angle and target channels
 
-        self.update_models(new_data)  # Propagate model stuff
+        emg1, emg2 = self.update_models(new_data)  # Propagate model stuff
 
-        new_data.append(self.dynamics_model.angle)
-        new_data.append(self.simulator.target)
+        # Replace data with filtered values and append simulator data
+        new_data = [
+            emg1, emg2, self.dynamics_model.angle, self.simulator.target
+        ]
 
         if self.channels != channels:
             self.set_channels(channels)
@@ -424,10 +431,14 @@ class MainWindow(QWidget):
             self.update_plots()
             self.last_update = now
 
-    def update_models(self, new_data: list):
-        """Update models, called on new data frame"""
+    def update_models(self, new_data: list) -> (float, float):
+        """Update models, called on new data frame
 
-        torque = self.muscle_model.update(new_data[0], new_data[1])
+        :return: Filtered EMG values
+        """
+
+        emg1, emg2 = self.filter_model.update(new_data[0], new_data[1])
+        torque = self.muscle_model.update(emg1, emg2)
         angle = self.dynamics_model.update(torque)
 
         self.simulator.angle = angle
@@ -446,6 +457,8 @@ class MainWindow(QWidget):
                 self.simulator.target += step
             else:
                 self.simulator.target -= step
+
+        return emg1, emg2
 
     def update_plots(self):
         """With data already updated, update plots"""
