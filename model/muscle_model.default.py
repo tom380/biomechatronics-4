@@ -1,5 +1,7 @@
-from simulator.muscle_model_base import MuscleModelBase, EmgFilterBase
 from scipy import signal
+
+from simulator.muscle_model_base import MuscleModelBase, EmgFilterBase
+from simulator.digital_filter import DigitalFilter
 
 
 class MuscleModel(MuscleModelBase):
@@ -49,12 +51,12 @@ class EmgFilter(EmgFilterBase):
 
         # TODO: Add your own filters and other parameters here
 
-        # Create 4th order low-pass filter with a cut-off frequency of 1 Hz
-        wc = 1.0 / (0.5 * self.FS)
-        # Compute Butterworth coefficients
-        self.test_filter = signal.butter(4, wc, btype='low')
-        # Initialize an array to hold the filter history
-        self.test_filter_history = signal.lfilter_zi(*self.test_filter)
+        # Create 4th order low-pass filter with a cut-off frequency of 5 Hz
+        # Compute Butterworth coefficients and pass them into a filter object
+        lowpass_wc = 5.0 / (0.5 * self.FS)
+        lowpass_b, lowpass_a = signal.butter(4, lowpass_wc, btype='low')
+
+        self.lowpass_filter = DigitalFilter(lowpass_b, lowpass_a)
 
     def update(self, emg1: float, emg2: float) -> (float, float):
         """Filter EMG signal.
@@ -66,7 +68,8 @@ class EmgFilter(EmgFilterBase):
 
         # TODO: Replace with custom EMG filtering
 
-        emg1_filtered = signal.lfilter(*self.test_filter, [emg1], zi=self.test_filter_history)
+        # Apply lowpass filter to emg1
+        emg1_filtered = self.lowpass_filter.sample(emg1)
         emg2_filtered = emg2
 
         return emg1_filtered, emg2_filtered
