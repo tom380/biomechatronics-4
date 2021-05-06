@@ -15,9 +15,26 @@ class MuscleModel(MuscleModelBase):
     Use `self.FS` for the sample frequency.
     """
 
-    def update(self, emg1: float, emg2: float) -> float:
+    def __init__(self):
+        """Constructor (this code is run only once).
+
+        The `self.` prefix indicates class properties. Such properties remain the
+        same between separate calls to the `update()` method.
+        """
+
+        super().__init__()  # Keep this line
+
+        # TODO: Initialize all the parameters for the musculoskeletal muscle
+        #   Hints: Open a wrist model in Opensim and obtain the following relationships:
+        #       - active and passive force-length,  angle-length and angle-moment arm
+        #       - maximal isometric force and pennation angle for each muscle (flexor and extensor)
+
+        self.emg_scale = 1.0  # Example of a property in Python
+
+    def update(self, angle: float, emg1: float, emg2: float) -> float:
         """Compute the next step in the muscle_model.
 
+        :param angle: The current angle of the wrist
         :param emg1: Unfiltered EMG (channel 0)
         :param emg2: Unfiltered EMG (channel 1)
         :return: Torque [Nm]
@@ -26,7 +43,7 @@ class MuscleModel(MuscleModelBase):
         # TODO: Enter custom neural muscular model here
 
         # Simply take EMG as proportional to torque
-        return emg1 - emg2
+        return (emg1 - emg2) / self.emg_scale
 
 
 class EmgFilter(EmgFilterBase):
@@ -47,6 +64,9 @@ class EmgFilter(EmgFilterBase):
 
         The `self.` prefix indicates class properties. Such properties remain the
         same between separate calls to the `update()` method.
+
+        Note: don't use the same filter object for more than one signal! The filter
+        object contains the filter state, which should be unique per signal.
         """
 
         # TODO: Add your own filters and other parameters here
@@ -56,7 +76,8 @@ class EmgFilter(EmgFilterBase):
         lowpass_wc = 5.0 / (0.5 * self.FS)
         lowpass_b, lowpass_a = signal.butter(4, lowpass_wc, btype='low')
 
-        self.lowpass_filter = DigitalFilter(lowpass_b, lowpass_a)
+        self.lowpass_filter_1 = DigitalFilter(lowpass_b, lowpass_a)
+        self.lowpass_filter_2 = DigitalFilter(lowpass_b, lowpass_a)
 
     def update(self, emg1: float, emg2: float) -> (float, float):
         """Filter EMG signal.
@@ -69,7 +90,7 @@ class EmgFilter(EmgFilterBase):
         # TODO: Replace with custom EMG filtering
 
         # Apply lowpass filter to emg1
-        emg1_filtered = self.lowpass_filter.sample(emg1)
-        emg2_filtered = emg2
+        emg1_filtered = self.lowpass_filter_1.sample(emg1)
+        emg2_filtered = self.lowpass_filter_2.sample(emg2)
 
         return emg1_filtered, emg2_filtered
