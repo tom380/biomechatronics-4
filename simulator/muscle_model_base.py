@@ -1,3 +1,6 @@
+from scipy.interpolate import CubicSpline, splprep
+
+
 class MuscleModelBase:
     """Base class for the EMG-steered neural-muscular muscle_model.
 
@@ -9,11 +12,12 @@ class MuscleModelBase:
 
     FS = 750.0  # EMG sampling rate
 
-    def update(self, emg1: float, emg2: float) -> float:
+    def update(self, angle: float, emg1: float, emg2: float) -> float:
         """Compute the next step in the muscle_model.
 
         Note: peak wrist torque is in the order of +/- 10 Nm
 
+        :param angle: The current angle of the wrist
         :param emg1: Filtered EMG (channel 0)
         :param emg2: Filtered EMG (channel 1)
         :return: Torque [Nm]

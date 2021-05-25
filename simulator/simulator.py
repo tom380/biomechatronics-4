@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QFrame
 from PyQt5.QtGui import QPainter, QPaintEvent, QPixmap, QColor, QPen
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QElapsedTimer
 
 
 class Simulator(QFrame):
@@ -34,6 +34,9 @@ class Simulator(QFrame):
         self.timer.timeout.connect(self.update)
         self.timer.start(int(1000.0 / self.FPS))
 
+        self.timeout = QElapsedTimer()  # Trigger the target timeout
+        self.timeout.start()
+
     @property
     def angle(self):
         """Get wrist angle."""
@@ -50,7 +53,9 @@ class Simulator(QFrame):
 
     @target.setter
     def target(self, value):
+        """Update target - Also reset timeout timer."""
         self._target = value
+        self.timeout.restart()  # Reset timeout timer
 
     def paintEvent(self, event: QPaintEvent) -> None:
         """Callback for when the visuals of the frame are updated."""

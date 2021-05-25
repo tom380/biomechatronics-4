@@ -402,13 +402,13 @@ class MainWindow(QWidget):
                                 'the board?'.format(channels),
                                 QMessageBox.Ok)
 
-        channels = 4  # Artificially add the angle and target channels
+        channels = 5  # Artificially add the EMG, angle and target and torque channels
 
-        emg1, emg2 = self.update_models(new_data)  # Propagate model stuff
+        emg1, emg2, torque = self.update_models(new_data)  # Propagate model stuff
 
         # Replace data with filtered values and append simulator data
         new_data = [
-            emg1, emg2, self.dynamics_model.angle, self.simulator.target
+            emg1, emg2, self.dynamics_model.angle, self.simulator.target, torque
         ]
 
         if self.channels != channels:
@@ -431,14 +431,15 @@ class MainWindow(QWidget):
             self.update_plots()
             self.last_update = now
 
-    def update_models(self, new_data: list) -> (float, float):
+    def update_models(self, new_data: list) -> (float, float, float):
         """Update models, called on new data frame
 
         :return: Filtered EMG values
         """
 
         emg1, emg2 = self.filter_model.update(new_data[0], new_data[1])
-        torque = self.muscle_model.update(emg1, emg2)
+        old_angle = self.dynamics_model.angle
+        torque = self.muscle_model.update(old_angle, emg1, emg2)
         angle = self.dynamics_model.update(torque)
 
         self.simulator.angle = angle
@@ -446,19 +447,22 @@ class MainWindow(QWidget):
         target = self.simulator.target
 
         # Update target
-        if abs(target - angle) < 5 and abs(self.dynamics_model.velocity) < 10:
+        if abs(target - angle) < 5 and abs(self.dynamics_model.velocity) < 10 \
+                or self.simulator.timeout.elapsed() > 10000:
 
             step = 30
             if target <= -60:
-                self.simulator.target += step
+                target += step
             elif target >= 60:
-                self.simulator.target -= step
+                target -= step
             elif random.random() > 0.5:
-                self.simulator.target += step
+                target += step
             else:
-                self.simulator.target -= step
+                target -= step
 
-        return emg1, emg2
+            self.simulator.target = target
+
+        return emg1, emg2, torque
 
     def update_plots(self):
         """With data already updated, update plots"""
@@ -509,10 +513,13 @@ class MainWindow(QWidget):
         self.plots = []
         self.curves = []
 
+        row = 0
+
         # First add the two EMG channels
         if self.overlay:
-            new_plot = self.layout_plots.addPlot(row=0, col=0,
+            new_plot = self.layout_plots.addPlot(row=row, col=0,
                                                  title='Channels')
+            row += 1
 
             for i in range(2):  # Only the EMG channels
                 new_curve = new_plot.plot()
@@ -522,16 +529,25 @@ class MainWindow(QWidget):
 
         else:
             for i in range(2):
-                new_plot = self.layout_plots.addPlot(row=i, col=0,
+                new_plot = self.layout_plots.addPlot(row=row, col=0,
                                                      title='EMG{}'.format(i + 1))
+                row += 1
 
                 new_curve = new_plot.plot()
 
                 self.plots.append(new_plot)
                 self.curves.append(new_curve)
 
+        # Now add the model torque
+        plot_torque = self.layout_plots.addPlot(row=row, col=0, title='Torque')
+        row += 1
+        curve_torque = plot_torque.plot()
+        self.plots.append(plot_torque)
+        self.curves.append(curve_torque)
+
         # Now add the model angle plot (overlay)
-        plot_angles = self.layout_plots.addPlot(row=3, col=0, title='Model')
+        plot_angles = self.layout_plots.addPlot(row=row, col=0, title='Model')
+        row += 1
         plot_angles.addLegend(offset=0, colCount=2)
 
         curve_angle = plot_angles.plot(name='Angle')
