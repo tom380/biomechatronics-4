@@ -402,13 +402,13 @@ class MainWindow(QWidget):
                                 'the board?'.format(channels),
                                 QMessageBox.Ok)
 
-        channels = 5  # Artificially add the EMG, angle and target and torque channels
+        channels = 6  # Artificially add the EMG, angle, velocity, target and torque channels
 
         emg1, emg2, torque = self.update_models(new_data)  # Propagate model stuff
 
         # Replace data with filtered values and append simulator data
         new_data = [
-            emg1, emg2, self.dynamics_model.angle, self.simulator.target, torque
+            emg1, emg2, torque, self.dynamics_model.angle, self.simulator.target, self.dynamics_model.velocity
         ]
 
         if self.channels != channels:
@@ -556,6 +556,13 @@ class MainWindow(QWidget):
         self.plots.append(plot_angles)
         self.curves.append(curve_angle)
         self.curves.append(curve_target)
+
+        # Now add the model velocity
+        plot_vel = self.layout_plots.addPlot(row=row, col=0, title='Velocity')
+        row += 1
+        curve_vel = plot_vel.plot()
+        self.plots.append(plot_vel)
+        self.curves.append(curve_vel)
 
         # Continue normally...
 
