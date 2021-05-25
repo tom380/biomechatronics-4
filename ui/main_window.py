@@ -447,17 +447,20 @@ class MainWindow(QWidget):
         target = self.simulator.target
 
         # Update target
-        if abs(target - angle) < 5 and abs(self.dynamics_model.velocity) < 10:
+        if abs(target - angle) < 5 and abs(self.dynamics_model.velocity) < 10 \
+                or self.simulator.timeout.elapsed() > 10000:
 
             step = 30
             if target <= -60:
-                self.simulator.target += step
+                target += step
             elif target >= 60:
-                self.simulator.target -= step
+                target -= step
             elif random.random() > 0.5:
-                self.simulator.target += step
+                target += step
             else:
-                self.simulator.target -= step
+                target -= step
+
+            self.simulator.target = target
 
         return emg1, emg2, torque
 
