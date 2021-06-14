@@ -1,4 +1,5 @@
 from scipy import signal
+import numpy as np
 
 
 class DigitalFilter:
@@ -36,4 +37,8 @@ class DigitalFilter:
         """
 
         y, self.z = signal.lfilter(self.b, self.a, [x], zi=self.z)
-        return y
+        # Output could be an array, convert to scalar
+
+        if isinstance(y, np.ndarray):
+            return y[0]
+        return float(y)
