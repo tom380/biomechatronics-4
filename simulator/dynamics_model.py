@@ -20,13 +20,13 @@ class DynamicsModel:
         # Consider the hand as a rod of equally distributed mass
         # Not a great assumption, but the order of magnitude should be okay
         self.mass = 0.3  # [kg], from: https://exrx.net/Kinesiology/Segments
-        self.length = 0.01  # [m], 0.19m from:
+        self.length = 0.10  # [m], 0.19m from:
         # https://www.researchgate.net/figure/Measurements-cm-of-hand-length-in-males-and-females_tbl1_257737146
         # but we reduce it a bit because the center of mass will be close to the wrist
 
         self.inertia = 1.0 / 3.0 * self.mass * pow(self.length, 2)  # [kg m^2]
 
-        self.damping = 0.03  # Found entirely by trial and error, such that motion
+        self.damping = 0.01  # Found entirely by trial and error, such that motion
         # damps out quickly and coasting is limited
 
         self.static_friction = 0.07  # [Nm], some static friction to prevent coasting
