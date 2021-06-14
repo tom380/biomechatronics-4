@@ -19,8 +19,8 @@ class DynamicsModel:
 
         # Consider the hand as a rod of equally distributed mass
         # Not a great assumption, but the order of magnitude should be okay
-        self.mass = 0.6  # [kg], from: https://exrx.net/Kinesiology/Segments
-        self.length = 0.10  # [m], 0.19m from:
+        self.mass = 0.3  # [kg], from: https://exrx.net/Kinesiology/Segments
+        self.length = 0.01  # [m], 0.19m from:
         # https://www.researchgate.net/figure/Measurements-cm-of-hand-length-in-males-and-females_tbl1_257737146
         # but we reduce it a bit because the center of mass will be close to the wrist
 
@@ -29,7 +29,7 @@ class DynamicsModel:
         self.damping = 0.03  # Found entirely by trial and error, such that motion
         # damps out quickly and coasting is limited
 
-        self.static_friction = 0.20  # [Nm], some static friction to prevent coasting
+        self.static_friction = 0.07  # [Nm], some static friction to prevent coasting
 
     def update(self, torque: float) -> float:
         """
@@ -53,8 +53,8 @@ class DynamicsModel:
         self._angle += self._velocity * self._dt
 
         # Angle limits:
-        lim_min = -90
-        lim_max = 75
+        lim_min = -69
+        lim_max = 69
         if self._angle < lim_min:
             self._angle = lim_min
             self._velocity = 0.0
