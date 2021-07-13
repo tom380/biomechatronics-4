@@ -6,6 +6,9 @@ This is a fork from [**uScope**](../../../uscope).
 
 The Biomechatronics Scope is used to visualize EMG signals and a neural-muscular model.
 
+Use in combination with the Biomechatronics MCU firmware: https://github.com/RobertoRoos/Biomechatronics-MCU  
+The firmware is made for the K64F.
+
 ## User Code
 
 Use the `model/` directory for the user code of students.  
