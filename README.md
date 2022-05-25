@@ -27,7 +27,7 @@ This environment is not committed to the repository.
 ## Getting started
 
 * In the root of this directory, run `python -m venv venv` to create a virtual environment called 'venv'.
-* In a terminal, activate this environment by running `source venv/Scripts/activiate` (Linux), `source venv/Scripts/activiate.bat`
+* In a terminal, activate this environment by running `source venv/bin/activiate` (Linux), `source venv/Scripts/activiate.bat`
 (Windows CMD) or `venv/Scripts/Activate.ps1` (Windows PowerShell). The latter is recommended for Windows.
 
 You should now see "(venv) $" at the start of your command line.  

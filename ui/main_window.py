@@ -31,7 +31,7 @@ try:
     app_id = 'BioRobotics.uScope'  # Change application id to make the
     # taskbar icon displayed correctly
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
-except ImportError:
+except (ImportError, AttributeError):
     ctypes = None  # Very unimportant fix, continue if ctypes was not found
 
 
