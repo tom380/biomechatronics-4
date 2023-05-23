@@ -1,8 +1,8 @@
 class DynamicsModel:
     """Model of the dynamics of the hand.
 
-    This muscle_model should not be overridden by students.
-
+    Students will edit the inertia and damping of the muscle model in this script. 
+    
     The muscle_model is integrated with simple Euler on each `update()`.
 
     A positive angle means flexion (the palm is lowered, towards the elbow).
@@ -24,10 +24,13 @@ class DynamicsModel:
         # https://www.researchgate.net/figure/Measurements-cm-of-hand-length-in-males-and-females_tbl1_257737146
         # but we reduce it a bit because the center of mass will be close to the wrist
 
-        self.inertia = 1.0 / 3.0 * self.mass * pow(self.length, 2)  # [kg m^2]
-
-        self.damping = 0.01  # Found entirely by trial and error, such that motion
+        inertiaValue = 1.0
+        dampingValue = 0.01 # Found entirely by trial and error, such that motion
         # damps out quickly and coasting is limited
+
+        self.inertia = inertiaValue * ((1/ 3.0) * self.mass * pow(self.length, 2))  # [kg m^2]
+
+        self.damping = dampingValue  
 
         self.static_friction = 0.07  # [Nm], some static friction to prevent coasting
 
