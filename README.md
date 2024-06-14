@@ -2,7 +2,7 @@
 
 [![CodeFactor](https://www.codefactor.io/repository/bitbucket/ctw-bw/uscope/badge)](https://www.codefactor.io/repository/bitbucket/ctw-bw/uscope)
 
-This is a fork from [**uScope**](../../../uscope).
+This is a fork from [**biomechatronics-scope**](https://bitbucket.org/ctw-bw/biomechatronics-scope/src/master/).
 
 The Biomechatronics Scope is used to visualize EMG signals and a neural-muscular model.
 
