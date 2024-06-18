@@ -109,65 +109,36 @@ class MuscleModel(MuscleModelBase):
         ECRL_activation = self.muscle_activation(emg1, -0.001)
         FCR_activation = self.muscle_activation(emg2, -0.002)
 
-        ECRL_muscle_force = self.muscle_force(ECRL.active_fl,
-                                              ECRL.passive_fl,
-                                              ECRL.max_isometric_force,
-                                              ECRL.optimal_fibre_length,
-                                              ECRL.pennation_angle_at_optimal,
-                                              ECRL_activation,
-                                              ECRL.tendon_slack_length,
-                                              ECRL.muscle_tendon_length(angle))
+        ECRL_force = self.muscle_tendon_force(ECRL, ECRL_activation, angle)
+        FCR_force = self.muscle_tendon_force(FCR, FCR_activation, angle)
 
-        FCR_muscle_force = self.muscle_force(FCR.active_fl,
-                                             FCR.passive_fl,
-                                             FCR.max_isometric_force,
-                                             FCR.optimal_fibre_length,
-                                             FCR.pennation_angle_at_optimal,
-                                             FCR_activation,
-                                             FCR.tendon_slack_length,
-                                             FCR.muscle_tendon_length(angle))
+        torque = ECRL_force * ECRL.flexion_moment_arm(angle) + FCR_force * FCR.flexion_moment_arm(angle)
 
         # Simply take EMG as proportional to torque
         # return (emg1 - emg2) / self.emg_scale
-        return ECRL_activation
+        return torque
     
     def muscle_activation(self, u, A):
-        return (np.exp(A * u / self.R) - 1) / (np.exp(A) - 1)
+        return (np.exp(A * u / 1) - 1) / (np.exp(A) - 1)
 
-    def muscle_force(self, fA, fP, Fmax, lo, phi_o, a, lts, lmt):
-        lt = lts
+    def muscle_tendon_force(self, muscle: Muscle, activation, angle):
+        lt = muscle.tendon_slack_length
+        lo = muscle.optimal_fibre_length
+        phi_o = muscle.pennation_angle_at_optimal
+        lmt = muscle.muscle_tendon_length(angle)
         lm = np.sqrt((lo * np.sin(phi_o)) ** 2 + (lmt - lt) ** 2)
-        FA = fA(lm/lo) * Fmax * a
+
+        fA = muscle.active_fl
+        fP = muscle.passive_fl
+        Fmax = muscle.max_isometric_force
+        FA = fA(lm/lo) * Fmax * activation
         FP = fP(lm/lo) * Fmax
         Fm = FA + FP
-        return Fm
 
-    def pennation_angle(self, lm):
-        return np.arcsin((self.lmo * np.sin(self.phi_o)) / lm)
+        phi = np.arcsin((lo * np.sin(phi_o)) / lm)
+        Fmt = Fm * np.cos(phi)
 
-    def muscle_tendon_force(self, Fm, phi):
-        return Fm * np.cos(phi)
-
-    def joint_torque(self, Fmt, r):
-        return Fmt * r
-
-    def compute_torque(self, u_ECR, u_FCR, lm, r_ECR, r_FCR):
-        a_ECR = self.muscle_activation(u_ECR, self.A_ECR)
-        a_FCR = self.muscle_activation(u_FCR, self.A_FCR)
-        
-        Fm_ECR = self.muscle_force(a_ECR, lm)
-        Fm_FCR = self.muscle_force(a_FCR, lm)
-        
-        phi_ECR = self.pennation_angle(lm)
-        phi_FCR = self.pennation_angle(lm)
-        
-        Fmt_ECR = self.muscle_tendon_force(Fm_ECR, phi_ECR)
-        Fmt_FCR = self.muscle_tendon_force(Fm_FCR, phi_FCR)
-        
-        T_ECR = self.joint_torque(Fmt_ECR, r_ECR)
-        T_FCR = self.joint_torque(Fmt_FCR, r_FCR)
-        
-        T_total = T_ECR + T_FCR
+        return Fmt
 
 
 class EmgFilter(EmgFilterBase):
