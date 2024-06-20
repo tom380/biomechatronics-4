@@ -104,6 +104,8 @@ class MuscleModel(MuscleModelBase):
         :return: Torque [Nm]
         """
 
+        angle = angle / 180 * np.pi
+
         ECRL = self.ECRL
         FCR = self.FCR
 
