@@ -1,5 +1,6 @@
 from scipy import signal
 from scipy.interpolate import CubicSpline
+from scipy.interpolate import PchipInterpolator
 
 from simulator.muscle_model_base import MuscleModelBase, EmgFilterBase
 from simulator.digital_filter import DigitalFilter
@@ -72,8 +73,8 @@ class MuscleModel(MuscleModelBase):
         passive_fl.y = [0, 0, 0, 0, 0.035, 0.12, 0.26, 0.55, 1.17, 2, 2, 2, 2]
 
         # Compute the splines using CubicSpline
-        active_fl_spline = CubicSpline(active_fl.x, active_fl.y)
-        passive_fl_spline = CubicSpline(passive_fl.x, passive_fl.y)
+        active_fl_spline = PchipInterpolator(active_fl.x, active_fl.y)
+        passive_fl_spline = PchipInterpolator(passive_fl.x, passive_fl.y)
 
         FCR.active_fl = active_fl_spline
         FCR.passive_fl = passive_fl_spline
@@ -85,10 +86,10 @@ class MuscleModel(MuscleModelBase):
         muscle_tendon_length_FCR = [0.29935362, 0.29641423, 0.29315810, 0.28963728, 0.28590906, 0.28203596, 0.27808623, 0.27413594, 0.27027482, 0.26662228]
         flexion_moment_arm_ECRL = [-0.01100436, -0.01105605, -0.01092046, -0.01060718, -0.01012554, -0.00948575, -0.00869947, -0.00777998, -0.00674223, -0.00560273]
         flexion_moment_arm_FCR = [0.01120295, 0.01258428, 0.01376582, 0.01472566, 0.01544287, 0.01589591, 0.01605878, 0.01589178, 0.01531788, 0.01415557]
-        ECRL.muscle_tendon_length = CubicSpline(angle, muscle_tendon_length_ECRL)
-        FCR.muscle_tendon_length = CubicSpline(angle, muscle_tendon_length_FCR)
-        ECRL.flexion_moment_arm = CubicSpline(angle, flexion_moment_arm_ECRL)
-        FCR.flexion_moment_arm = CubicSpline(angle, flexion_moment_arm_FCR)
+        ECRL.muscle_tendon_length = PchipInterpolator(angle, muscle_tendon_length_ECRL)
+        FCR.muscle_tendon_length = PchipInterpolator(angle, muscle_tendon_length_FCR)
+        ECRL.flexion_moment_arm = PchipInterpolator(angle, flexion_moment_arm_ECRL)
+        FCR.flexion_moment_arm = PchipInterpolator(angle, flexion_moment_arm_FCR)
 
         self.FCR = FCR
         self.ECRL = ECRL
