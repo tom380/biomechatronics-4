@@ -169,16 +169,16 @@ class EmgFilter(EmgFilterBase):
         self.MVC2 = 0.065
 
         fnotch = 50
-        Qnotch = 10
+        Qnotch = 2
         notch_b, notch_a = signal.iirnotch(fnotch, Qnotch, self.FS)
 
         fhighpass = 15
         highpass_wc = fhighpass / (self.FS / 2)
-        highpass_b, highpass_a = signal.butter(4, highpass_wc, btype='high')
+        highpass_b, highpass_a = signal.butter(2, highpass_wc, btype='high')
 
-        flowpass = 6
+        flowpass = 1.6
         lowpass_wc = flowpass / (self.FS / 2)
-        lowpass_b, lowpass_a = signal.butter(4, lowpass_wc, btype='low')
+        lowpass_b, lowpass_a = signal.butter(2, lowpass_wc, btype='low')
 
         self.notch_filter1 = DigitalFilter(notch_b, notch_a)
         self.highpass_filter1 = DigitalFilter(highpass_b, highpass_a)
