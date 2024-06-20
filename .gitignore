@@ -1,6 +1,7 @@
 # User specfic
 ##############
 /settings.json
+/test.py
 # /model/muscle_model.py
 
 # Build directories
